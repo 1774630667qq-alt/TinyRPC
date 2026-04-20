@@ -11,6 +11,7 @@
 #include "Buffer.hpp"
 #include "TcpConnection.hpp"
 #include "Logger.hpp"
+#include <utility>
 
 namespace MyRPC {
 
@@ -32,7 +33,7 @@ void RpcCodec::parseMessage(const std::shared_ptr<TcpConnection>& conn, Buffer* 
 
             // 将切好的干净包抛给上层业务
             if (messageCallback_) {
-                messageCallback_(conn, meta, raw_body);
+                messageCallback_(conn, meta, std::move(raw_body));
             }
         } 
         else if (status == DecodeStatus::kHalfPacket) {
@@ -49,4 +50,3 @@ void RpcCodec::parseMessage(const std::shared_ptr<TcpConnection>& conn, Buffer* 
 }
 
 } // namespace MyRPC
-
