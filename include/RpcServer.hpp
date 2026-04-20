@@ -38,7 +38,7 @@ private:
      */
     void onRpcMessage(const std::shared_ptr<TcpConnection>& conn,
                       const tiny_rpc::RpcMeta& meta,
-                      const std::string& raw_body);
+                      std::string raw_body);
 };
 
 } // namespace MyRPC

@@ -12,6 +12,7 @@
 #include "Logger.hpp"
 #include "order.pb.h"
 #include <unistd.h>
+#include <utility>
 
 namespace MyRPC {
 RpcServer::RpcServer(EventLoop* loop, int port, ThreadPool* pool)
@@ -21,8 +22,8 @@ RpcServer::RpcServer(EventLoop* loop, int port, ThreadPool* pool)
     // 1. 设置 codec_ 的上层业务回调
     codec_.setMessageCallback([this] (const std::shared_ptr<TcpConnection>& conn,
                                       const tiny_rpc::RpcMeta& meta,
-                                      const std::string& raw_body) {
-        onRpcMessage(conn, meta, raw_body);
+                                      std::string raw_body) {
+        onRpcMessage(conn, meta, std::move(raw_body));
     });
 
     // 2. 将底层 TcpServer 的原始字节流回调全部委托给 codec_
@@ -37,7 +38,7 @@ void RpcServer::start() {
 
 void RpcServer::onRpcMessage(const std::shared_ptr<TcpConnection>& conn,
                               const tiny_rpc::RpcMeta& meta,
-                              const std::string& raw_body) {
+                              std::string raw_body) {
     // TODO: 后续实现动态路由分发
     //   1. 根据 meta.service_name() 查找已注册的 Service 对象
     //   2. 根据 meta.method_name() 找到该 Service 上的具体方法描述符
@@ -46,11 +47,10 @@ void RpcServer::onRpcMessage(const std::shared_ptr<TcpConnection>& conn,
     //   5. 将执行结果通过 Encode 打包后投递回 IO 线程发送
 
     // ============ 临时硬编码业务逻辑（过渡阶段） ============
-    // 捕获 meta 和 raw_body 的副本，交给线程池异步执行
-    std::string body_copy = raw_body;
+    // 捕获 meta 和 raw_body 的所有权，交给线程池异步执行
     tiny_rpc::RpcMeta meta_copy = meta;
 
-    pool_->enqueue([conn, meta_copy = std::move(meta_copy), body_copy = std::move(body_copy)] () {
+    pool_->enqueue([conn, meta_copy = std::move(meta_copy), body_copy = std::move(raw_body)] () {
         tiny_rpc::OrderRequest req;
         
         if (!req.ParseFromString(body_copy)) {
