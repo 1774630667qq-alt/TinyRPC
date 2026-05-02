@@ -2,6 +2,7 @@
 #include "TcpClient.hpp"
 #include "TcpConnection.hpp"
 #include "ProtocolUtil.hpp"
+#include "rpc/RpcController.hpp"
 #include "Logger.hpp"
 #include "Buffer.hpp"
 #include "rpc_meta.pb.h"
@@ -46,7 +47,7 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor* method,
     // 5. 将 {response, done} 存入等待表
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        outstandings_[seqId] = {response, done};
+        outstandings_[seqId] = {controller, response, done};
     }
 
     LOG_INFO << "RpcChannel: 发送 RPC 请求, service=" << meta.service_name()
@@ -87,7 +88,12 @@ void RpcChannel::onRpcResponse(const std::shared_ptr<TcpConnection>& conn,
         LOG_ERROR << "RpcChannel: 服务端返回错误, seqId=" << seqId
                   << ", code=" << meta.err_code()
                   << ", msg=" << meta.err_msg();
-        // 仍然执行 done 回调，让调用方知道出错了
+        // 通过 controller 记录错误状态
+        if (call.controller) {
+            auto* ctrl = static_cast<RpcController*>(call.controller);
+            ctrl->SetFailed(meta.err_msg());
+            ctrl->SetErrorCode(meta.err_code());
+        }
         if (call.done) {
             call.done->Run();
         }
@@ -97,6 +103,11 @@ void RpcChannel::onRpcResponse(const std::shared_ptr<TcpConnection>& conn,
     // 3. 反序列化响应体到调用方准备好的 response 指针
     if (!call.response->ParseFromString(raw_body)) {
         LOG_ERROR << "RpcChannel: 响应体反序列化失败, seqId=" << seqId;
+        if (call.controller) {
+            auto* ctrl = static_cast<RpcController*>(call.controller);
+            ctrl->SetFailed("响应体反序列化失败");
+            ctrl->SetErrorCode(-1);
+        }
     } else {
         LOG_INFO << "RpcChannel: 收到 RPC 响应, seqId=" << seqId;
     }

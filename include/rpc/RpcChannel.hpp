@@ -5,6 +5,7 @@
 #include <atomic>
 #include <memory>
 #include "rpc/RpcCodec.hpp"
+#include "rpc/RpcController.hpp"
 
 namespace MyRPC {
 
@@ -39,11 +40,11 @@ public:
     /**
      * @brief 异步发起 RPC 调用
      * @signature void CallMethod(const MethodDescriptor*, RpcController*, const Message*, Message*, Closure*)
-     * @param method   Protobuf 方法描述符（自动获取 service_name 和 method_name）
-     * @param controller RPC 控制器（当前未使用）
-     * @param request  已填充的请求消息（由调用方分配）
-     * @param response 空的响应消息指针（由调用方分配，异步回调后填充）
-     * @param done     完成回调（异步回包后由 onMessage 执行）
+     * @param method     Protobuf 方法描述符（自动获取 service_name 和 method_name）
+     * @param controller RPC 控制器指针（可选，用于在回包时记录调用状态和错误信息）
+     * @param request    已填充的请求消息（由调用方分配）
+     * @param response   空的响应消息指针（由调用方分配，异步回调后填充）
+     * @param done       完成回调（异步回包后由 onMessage 执行）
      */
     void CallMethod(const google::protobuf::MethodDescriptor* method,
                     google::protobuf::RpcController* controller,
@@ -70,11 +71,12 @@ private:
                        std::string raw_body);
 
     /**
-     * @brief 异步请求上下文：保存等待回包的 response 和 done
+     * @brief 异步请求上下文：保存等待回包的 controller、response 和 done
      */
     struct OutstandingCall {
-        google::protobuf::Message* response;   ///< 由调用方分配的响应消息指针
-        google::protobuf::Closure* done;       ///< 完成回调
+        google::protobuf::RpcController* controller; ///< 调用状态控制器（可为 nullptr）
+        google::protobuf::Message* response;          ///< 由调用方分配的响应消息指针
+        google::protobuf::Closure* done;              ///< 完成回调
     };
 
     TcpClient* client_;                              ///< 底层网络传输
