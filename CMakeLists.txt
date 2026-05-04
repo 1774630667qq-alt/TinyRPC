@@ -12,6 +12,7 @@ find_package(Threads REQUIRED)
 
 # 2. 设置头文件包含目录
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/include)
 # 非常重要：protoc 生成的 .pb.h 通常在 build 目录下，所以需要包含当前二进制目录
 include_directories(${CMAKE_CURRENT_BINARY_DIR}) 
 
@@ -20,6 +21,9 @@ list(REMOVE_ITEM SRC_LIST
     "${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/src/test_cilent.cpp"
 )
+
+# 第三方库源文件
+file(GLOB THIRD_PARTY_SRC_LIST "third_party/src/*.cpp")
 
 # =========================================================
 # 下面是为你接下来的微任务 1.1 预留的编译规则
@@ -32,8 +36,8 @@ file(GLOB PROTO_FILE "${CMAKE_CURRENT_SOURCE_DIR}/proto/*.proto")
 protobuf_generate_cpp(PROTO_SRCS PROTO_HDRS ${PROTO_FILE})
 
 # 4. 编译我们的测试可执行文件 (把生成的 .pb.cc 和 main.cpp 一起编译)
-add_executable(proto_test src/main.cpp ${SRC_LIST} ${PROTO_SRCS})
-add_executable(client_test src/test_cilent.cpp ${SRC_LIST} ${PROTO_SRCS})
+add_executable(proto_test src/main.cpp ${SRC_LIST} ${THIRD_PARTY_SRC_LIST} ${PROTO_SRCS})
+add_executable(client_test src/test_cilent.cpp ${SRC_LIST} ${THIRD_PARTY_SRC_LIST} ${PROTO_SRCS})
 
 # 5. 链接 Protobuf 的 C++ 运行时库及多线程库
 target_link_libraries(proto_test PRIVATE ${Protobuf_LIBRARIES} Threads::Threads)

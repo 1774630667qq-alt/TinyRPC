@@ -9,3 +9,5 @@ compile_commands.json
 *.pb.h
 .cache/
 *.yaml
+.clang-format
+log/

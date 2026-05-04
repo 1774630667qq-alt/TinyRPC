@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<tiny_rpc>
+    <log>
+        <log_level>DEBUG</log_level>
+        <log_file_name>tiny_rpc_server</log_file_name>
+        <log_file_path>./log</log_file_path>
+        <log_appender>BOTH</log_appender>
+    </log>
+
+    <server>
+        <ip>127.0.0.1</ip>
+        <port>8081</port>
+    </server>
+
+    <zookeeper>
+        <ip>127.0.0.1</ip>
+        <port>2181</port>
+    </zookeeper>
+</tiny_rpc>

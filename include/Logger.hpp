@@ -12,15 +12,19 @@
 
 namespace MyRPC {
 
-// 全局日志初始化函数 (必须在程序开始时调用一次)
-void initGlobalLogger(const std::string& basename);
+/**
+ * @brief 全局日志初始化函数（无参版本，自动从 Config 读取所有参数）
+ * @note 必须在 Config::SetGlobalConfig() 之后调用
+ */
+void initGlobalLogger();
 
 // 1. 定义日志级别
 enum class LogLevel {
+    DEBUG,    ///< 调试级别，仅在开发阶段使用
     INFO,
     WARNING,
     ERROR,
-    FATAL // 致命错误，打印完直接让程序 abort() 退出
+    FATAL     ///< 致命错误，打印完直接让程序 abort() 退出
 };
 
 /**
@@ -75,6 +79,8 @@ private:
 // 编译器会展开为：Logger(__FILE__, __LINE__, LogLevel::INFO).stream() << "hello";
 // 这会创建一个匿名的 Logger 临时对象。当这行代码执行完（遇到分号），临时对象被销毁，触发析构函数！
 
+#define LOG_DEBUG   if (MyRPC::LogLevel::DEBUG   >= MyRPC::getLogLevel()) \
+                    MyRPC::Logger(__FILE__, __LINE__, MyRPC::LogLevel::DEBUG).stream()
 #define LOG_INFO    if (MyRPC::LogLevel::INFO    >= MyRPC::getLogLevel()) \
                     MyRPC::Logger(__FILE__, __LINE__, MyRPC::LogLevel::INFO).stream()
 #define LOG_WARNING if (MyRPC::LogLevel::WARNING >= MyRPC::getLogLevel()) \

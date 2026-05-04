@@ -10,6 +10,7 @@
  *
  * 两种模式共用同一个 TcpClient 长连接和 EventLoop。
  */
+#include "Application.hpp"
 #include "EventLoop.hpp"
 #include "TcpClient.hpp"
 #include "TcpConnection.hpp"
@@ -22,6 +23,9 @@
 #include <thread>
 
 int main() {
+    // 1. 一键初始化所有基础设施 (Config → Logger)
+    MyRPC::Application::init("conf/tiny_rpc.xml");
+
     MyRPC::EventLoop loop;
     MyRPC::TcpClient client(&loop, "127.0.0.1", 8080);
     MyRPC::RpcChannel channel(&client, &loop);

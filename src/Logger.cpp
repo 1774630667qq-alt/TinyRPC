@@ -1,20 +1,78 @@
 #include "Logger.hpp"
 #include "AsyncLogging.hpp"
+#include "Config.hpp"
 #include <sys/time.h>
 #include <iostream>
 
 namespace MyRPC {
 
     // ==========================================================
-    // 1. 定义全局的异步日志大管家 (使用单例模式的变体：静态局部变量)
+    // 1. 全局状态
     // ==========================================================
     static AsyncLogging* g_asyncLogger = nullptr;
     static LogLevel g_logLevel = LogLevel::INFO; // 默认输出所有级别
 
-    // 提供一个初始化函数，供 main.cpp 在程序刚启动时调用
-    void initGlobalLogger(const std::string& basename) {
-        g_asyncLogger = new AsyncLogging(basename);
-        g_asyncLogger->start(); // 启动后台扫地僧线程
+    /**
+     * @brief 日志输出模式枚举
+     * @details 控制日志消息的输出端点：
+     *   - CONSOLE: 仅输出到标准输出 (stdout)
+     *   - FILE:    仅写入 AsyncLogging 文件系统
+     *   - BOTH:    同时输出到控制台和文件
+     */
+    enum class AppenderMode { CONSOLE, FILE, BOTH };
+    static AppenderMode g_appender = AppenderMode::CONSOLE;
+
+    // ==========================================================
+    // 2. 辅助函数
+    // ==========================================================
+
+    /**
+     * @brief 将配置字符串转换为 LogLevel 枚举
+     * @param str 日志级别字符串 (如 "DEBUG", "INFO", "WARNING", "ERROR", "FATAL")
+     * @return 对应的 LogLevel 枚举值，无法识别时默认返回 INFO
+     */
+    static LogLevel stringToLogLevel(const std::string& str) {
+        if (str == "DEBUG")   return LogLevel::DEBUG;
+        if (str == "INFO")    return LogLevel::INFO;
+        if (str == "WARNING") return LogLevel::WARNING;
+        if (str == "ERROR")   return LogLevel::ERROR;
+        if (str == "FATAL")   return LogLevel::FATAL;
+        return LogLevel::INFO; // 无法识别时安全降级
+    }
+
+    /**
+     * @brief 将配置字符串转换为 AppenderMode 枚举
+     * @param str 输出模式字符串 (如 "CONSOLE", "FILE", "BOTH")
+     * @return 对应的 AppenderMode 枚举值，无法识别时默认返回 CONSOLE
+     */
+    static AppenderMode stringToAppender(const std::string& str) {
+        if (str == "FILE") return AppenderMode::FILE;
+        if (str == "BOTH") return AppenderMode::BOTH;
+        return AppenderMode::CONSOLE; // 无法识别时安全降级
+    }
+
+    // ==========================================================
+    // 3. 初始化函数（自动从 Config 读取所有参数）
+    // ==========================================================
+    void initGlobalLogger() {
+        Config* cfg = Config::GetGlobalConfig();
+        if (!cfg) {
+            std::cerr << "[Logger] WARN: Config 尚未初始化，使用默认配置 (CONSOLE + INFO)" << std::endl;
+            return;
+        }
+
+        // 设置日志级别
+        setLogLevel(stringToLogLevel(cfg->log_level_));
+
+        // 设置输出模式
+        g_appender = stringToAppender(cfg->log_appender_);
+
+        // 如果输出模式包含 FILE，创建并启动 AsyncLogging
+        if (g_appender == AppenderMode::FILE || g_appender == AppenderMode::BOTH) {
+            std::string basename = cfg->log_file_path_ + "/" + cfg->log_file_name_;
+            g_asyncLogger = new AsyncLogging(basename);
+            g_asyncLogger->start(); // 启动后台写日志线程
+        }
     }
 
     void setLogLevel(LogLevel level) { g_logLevel = level; }
@@ -22,9 +80,10 @@ namespace MyRPC {
     LogLevel getLogLevel() { return g_logLevel; }
 
     // ==========================================================
-    // 2. 辅助数组：把枚举转换成字符串前缀
+    // 4. 辅助数组：把枚举转换成字符串前缀
     // ==========================================================
-    const char* LogLevelName[4] = {
+    const char* LogLevelName[5] = {
+        "[DEBUG]",
         "[INFO] ",
         "[WARN] ",
         "[ERROR]",
@@ -51,13 +110,24 @@ namespace MyRPC {
         // 2. 打印文件名和行号，并加上换行符！
         stream_ << " - " << file_ << ':' << line_ << '\n';
 
-        // 3. 把 stream_ 里的完整数据，统统喂给全局的大管家 g_asyncLogger！
-        if (g_asyncLogger) {
-            const LogStream::Buffer& buf = stream_.buffer();
-            g_asyncLogger->append(buf.data(), buf.length());
-        } else {
-            // 防御性编程：如果用户忘了调用 initGlobalLogger，就直接退化成输出到终端屏幕
-            const LogStream::Buffer& buf = stream_.buffer();
+        const LogStream::Buffer& buf = stream_.buffer();
+
+        // 3. 根据输出模式，将日志发送到对应的输出端
+        if (g_appender == AppenderMode::CONSOLE || g_appender == AppenderMode::BOTH) {
+            // 输出到控制台
+            std::cout.write(buf.data(), buf.length());
+            std::cout.flush();
+        }
+
+        if (g_appender == AppenderMode::FILE || g_appender == AppenderMode::BOTH) {
+            // 写入异步日志文件
+            if (g_asyncLogger) {
+                g_asyncLogger->append(buf.data(), buf.length());
+            }
+        }
+
+        // Fallback: 如果 g_asyncLogger 为空且模式不含 CONSOLE，至少保底输出到屏幕
+        if (!g_asyncLogger && g_appender != AppenderMode::CONSOLE && g_appender != AppenderMode::BOTH) {
             std::cout.write(buf.data(), buf.length());
             std::cout.flush();
         }
