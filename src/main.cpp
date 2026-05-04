@@ -36,5 +36,7 @@ int main() {
     LOG_INFO << "🚀 RPC Server 已启动，监听 " << cfg->server_port_ << " 端口...";
     loop.loop(); // 死循环，监听 Epoll 事件
 
+    // 优雅退出：刷盘日志 + 释放全局资源
+    MyRPC::Application::destroy();
     return 0;
 }

@@ -19,4 +19,16 @@ void Application::init(const char* config_path) {
     LOG_INFO << "TinyRPC 基础设施初始化完毕 ✅";
 }
 
+void Application::destroy() {
+    LOG_INFO << "TinyRPC 开始执行优雅退出... 🛑";
+
+    // 按初始化的逆序销毁：先关日志（确保缓冲区刷盘），再释放配置
+
+    // ① 销毁日志系统（stop AsyncLogging 后台线程 → 刷盘 → join → delete）
+    destroyGlobalLogger();
+
+    // ② 释放 Config 单例堆内存
+    Config::DestroyGlobalConfig();
+}
+
 } // namespace MyRPC

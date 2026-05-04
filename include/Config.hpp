@@ -33,6 +33,12 @@ public:
      */
     static void SetGlobalConfig(const char* xmlfile);
 
+    /**
+     * @brief 销毁全局配置单例，释放堆内存
+     * @note 应在进程退出时调用（通常由 Application::destroy() 统一管理）
+     */
+    static void DestroyGlobalConfig();
+
 public:
     // ==========================================
     // 配置项参数区 (可通过 GetGlobalConfig()->xxx 访问)

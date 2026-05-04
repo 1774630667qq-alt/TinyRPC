@@ -95,5 +95,8 @@ int main() {
     loop.loop();  // 事件循环驱动底层网络 IO
 
     LOG_INFO << "👋 客户端退出";
+
+    // 优雅退出：刷盘日志 + 释放全局资源
+    MyRPC::Application::destroy();
     return 0;
 }

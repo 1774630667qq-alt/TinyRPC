@@ -28,6 +28,11 @@ void Config::SetGlobalConfig(const char *xmlfile) {
     }
 }
 
+void Config::DestroyGlobalConfig() {
+    delete global_config_;
+    global_config_ = nullptr;
+}
+
 Config::Config() : server_port_(0), zk_port_(0) {}
 
 Config::Config(const char* xmlfile) : server_port_(0), zk_port_(0) {

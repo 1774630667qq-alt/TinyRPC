@@ -75,6 +75,16 @@ namespace MyRPC {
         }
     }
 
+    void destroyGlobalLogger() {
+        if (g_asyncLogger) {
+            g_asyncLogger->stop();   // 唤醒后台线程 → 刷盘 → join
+            delete g_asyncLogger;
+            g_asyncLogger = nullptr;
+        }
+        // 重置为 CONSOLE 模式，这样 destroy 后如果还有日志输出也不会崩
+        g_appender = AppenderMode::CONSOLE;
+    }
+
     void setLogLevel(LogLevel level) { g_logLevel = level; }
 
     LogLevel getLogLevel() { return g_logLevel; }

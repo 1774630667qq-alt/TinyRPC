@@ -18,6 +18,15 @@ namespace MyRPC {
  */
 void initGlobalLogger();
 
+/**
+ * @brief 销毁全局日志系统，确保所有缓冲区数据刷盘
+ * @details 内部按顺序执行：
+ *   1. 调用 AsyncLogging::stop()（唤醒后台线程 → 刷盘 → join 线程）
+ *   2. delete g_asyncLogger 并置空
+ * @note 必须在进程退出前调用，否则最后几秒的日志可能丢失
+ */
+void destroyGlobalLogger();
+
 // 1. 定义日志级别
 enum class LogLevel {
     DEBUG,    ///< 调试级别，仅在开发阶段使用
